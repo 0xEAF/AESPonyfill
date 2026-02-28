@@ -1,0 +1,10 @@
+# Ignore Emscripten build files and output files
+output*
+*.o
+*.wasm
+
+# Ignore Node modules
+node_modules/
+
+# Ignore Visual Studio Code settings
+.vscode/
