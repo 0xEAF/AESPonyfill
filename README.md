@@ -5,7 +5,7 @@
 > ### NOTE
 > To clone the repo, use:
 > 
-> **`git clone https://www.github.com/xeaf/AESPonyfill --recursive`**
+> **`git clone https://www.github.com/0xEAF/AESPonyfill --recursive`**
 > 
 > If you do not use `--recursive`, the Git submodules won't be downloaded, and building will be impossible.
 > 
