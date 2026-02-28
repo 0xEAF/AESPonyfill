@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>AES-256-CBC demo - AESPonyfill</title>
+</head>
+<body>
+    <h1>AES-256-CBC demo - AESPonyfill</h1>
+    <input type="text" id="input" placeholder="Input / Ciphertext"><br>
+    <input type="password" id="password" placeholder="Password"><br>
+    <input type="text" id="iv" placeholder="IV (base64, 16 bytes)"><br>
+    <input type="text" id="tag" placeholder="Tag (base64, decryption only)"><br>
+    <button id="encrypt">Encrypt</button>
+    <button id="decrypt">Decrypt</button>
+    <button id="reset">Reset</button>
+    <button id="reverse">Reverse</button><br>
+    <input type="text" id="output" placeholder="Output" readonly>
+    <script src="output.bundle.min.js"></script>
+    <script>
+        // Utility: derive a 256-bit key from password using SHA-256
+		async function deriveKeyFromPassword(password) {
+			const enc = new TextEncoder();
+			const data = enc.encode(password);
+			const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+			return new Uint8Array(hashBuffer);
+		}
+
+		// Utility: encode to base64
+		function toBase64(uint8arr) {
+			return btoa(String.fromCharCode(...uint8arr));
+		}
+
+		// Utility: decode from base64
+		function fromBase64(b64) {
+			return new Uint8Array([...atob(b64)].map(ch => ch.charCodeAt(0)));
+		}
+
+		document.getElementById("encrypt").addEventListener("click", async function() {
+			let input = document.getElementById("input").value;
+			let password = document.getElementById("password").value;
+			let ivField = document.getElementById("iv");
+			let tagField = document.getElementById("tag");
+			let outputField = document.getElementById("output");
+
+			// derive a 256-bit key from password
+			let key = await deriveKeyFromPassword(password);
+
+			let iv;
+			if (ivField.value.trim() === "") {
+				// generate random IV
+				iv = crypto.getRandomValues(new Uint8Array(16));
+				ivField.value = toBase64(iv);
+			} else {
+				iv = fromBase64(ivField.value.trim());
+			}
+
+			// Manually encode the input text to bytes
+			const encoder = new TextEncoder();
+			const inputBytes = encoder.encode(input);
+
+			let cipher = new AESPonyfill(key, { mode: "CBC", keyLen: 256 });
+			let { ciphertext, tag } = await cipher.encrypt(inputBytes, { iv });
+
+			// pack result as JSON with base64
+			outputField.value = toBase64(ciphertext);
+			tagField.value = toBase64(tag);
+
+			cipher.free();
+		});
+
+		document.getElementById("decrypt").addEventListener("click", async function() {
+			let ciphertextB64 = document.getElementById("input").value;
+			let password = document.getElementById("password").value;
+			let ivB64 = document.getElementById("iv").value;
+			let tagB64 = document.getElementById("tag").value;
+			let outputField = document.getElementById("output");
+
+			// derive the same 256-bit key
+			let key = await deriveKeyFromPassword(password);
+
+			let ciphertext = fromBase64(ciphertextB64.trim());
+			let iv = fromBase64(ivB64.trim());
+			let tag = fromBase64(tagB64.trim());
+
+			let cipher = new AESPonyfill(key, { mode: "CBC", keyLen: 256 });
+			
+			// decrypt returns raw bytes now
+			let plaintextBytes = await cipher.decrypt(ciphertext, iv, tag);
+			
+			// Manually decode the bytes to text
+			const decoder = new TextDecoder();
+			let output = decoder.decode(plaintextBytes);
+
+			outputField.value = output;
+			cipher.free();
+		});
+
+		document.getElementById("reset").addEventListener("click", function () {
+			document.getElementById("input").value = "";
+			document.getElementById("password").value = "";
+			document.getElementById("iv").value = "";
+			document.getElementById("tag").value = "";
+			document.getElementById("output").value = "";
+		});
+
+		document.getElementById("reverse").addEventListener("click", function () {
+			document.getElementById("input").value = document.getElementById("output").value;
+			document.getElementById("output").value = "";
+		});
+    </script>
+	<style>
+		body {
+			background-color: #f8f8ff;
+			text-align: center;
+			margin: 0 auto;
+			font-family: sans-serif;
+			font-size: 125%;
+		}
+		
+		input, button {
+			font-family: sans-serif;
+			font-size: 125%;
+			border: 2px solid #d3d3d3;
+			border-radius: 5px;
+			margin: 5px;
+		}
+		
+		input {
+			width: 80%;
+		}
+		
+		button {
+			width: 19.2%;
+		}
+	</style>
+</body>
+</html>
